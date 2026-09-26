@@ -1,0 +1,27 @@
+[project]
+name = "ai-research-radar"
+version = "0.1.0"
+description = "A weekly, evidence-first AI research briefing: arXiv → Claude screening, ranking, full-text deep dives and fact-checking → Markdown/HTML report."
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=1.8.0",
+    "httpx2>=2.13.1",
+    "jinja2>=3.1.6",
+    "markdown>=3.11",
+    "pydantic>=2.13.5",
+    "pymupdf>=1.28.2",
+    "python-dotenv>=1.2.3",
+    "pyyaml>=6.0.3",
+]
+
+[project.scripts]
+radar = "ai_research_radar:main"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

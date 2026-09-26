@@ -1,0 +1,80 @@
+# AI Research Radar configuration.
+# Everything the pipeline does is driven from this file; edit freely.
+
+reader:
+  name: Arpan
+  # Used by the writer model for the "why this matters to you" sections.
+  profile: >
+    ML engineer building LLM agents (MCP/A2A), RAG systems and evaluation harnesses,
+    with a strong interest in AI reliability and security. Also works on computer
+    vision and computational pathology (whole-slide images, multiple-instance
+    learning), and follows foundation-model reasoning, inference efficiency and GNNs.
+
+arxiv:
+  categories: [cs.AI, cs.LG, cs.CL, cs.CV, stat.ML, cs.IR, cs.MA, eess.IV, q-bio.QM]
+  lookback_days: 7
+  max_results: 3000        # hard cap on abstracts pulled per run
+  page_size: 200
+  request_delay_s: 3.0     # arXiv asks for >= 3 s between API calls
+
+# Interest areas. `share` controls how many triage slots each area gets;
+# keywords give each paper a fallback area and drive the free dry-run ranking.
+areas:
+  agents_rag_reliability:
+    label: Agents, RAG, evals, reliability & security
+    share: 0.35
+    keywords: [agent, agentic, tool use, tool-use, function calling, mcp, model context protocol,
+               a2a, multi-agent, retrieval-augmented, rag, retrieval, reranking, evaluation,
+               benchmark, llm-as-a-judge, hallucination, faithfulness, factuality, calibration,
+               uncertainty, jailbreak, prompt injection, red teaming, safety, alignment,
+               reward hacking, interpretability, guardrail, memory]
+  vision_multimodal_bio:
+    label: Vision, multimodal & biomedical/pathology AI
+    share: 0.25
+    keywords: [vision-language, multimodal, vlm, image, video, segmentation, detection,
+               diffusion, pathology, histopathology, whole slide, whole-slide, wsi,
+               multiple instance learning, medical imaging, radiology, biomedical, clinical,
+               cancer, microscopy, foundation model for pathology]
+  foundation_reasoning_efficiency:
+    label: Foundation models, reasoning & efficiency
+    share: 0.20
+    keywords: [large language model, llm, reasoning, chain-of-thought, test-time compute,
+               reinforcement learning from, rlhf, rlvr, grpo, distillation, quantization,
+               pruning, mixture of experts, moe, long context, scaling law, pretraining,
+               fine-tuning, lora, speculative decoding, state space model]
+  systems_infra:
+    label: AI systems, inference & data infrastructure
+    share: 0.10
+    keywords: [inference, serving, kv cache, throughput, latency, gpu, kernel, compiler,
+               distributed training, data pipeline, dataset, data curation, synthetic data,
+               vector database, embedding]
+  gnn_wildcard:
+    label: GNNs, networking & wildcards
+    share: 0.10
+    keywords: [graph neural network, gnn, message passing, knowledge graph, network,
+               networking, routing, theorem, breakthrough, state-of-the-art]
+
+pipeline:
+  prefilter_keep: 0        # 0 = the screening model scores every abstract; N > 0 = keyword-prefilter to N first
+  triage_batch_size: 40    # abstracts per screening call
+  rank_pool: 60            # top-scored papers the judge compares side by side
+  shortlist: 30            # papers the judge picks (deep dives + skims come from here, best first)
+  deep_dives: 8            # papers whose full text is read and explained in detail
+  skim: 15                 # "worth skimming" papers (short summaries only)
+  fulltext_max_chars: 120000  # main-text budget per paper (appendix is dropped first)
+  exclude_already_reported: true
+
+models:
+  # Scores every abstract (~2,000/week): cheap and fast.
+  triage: claude-haiku-4-5
+  # Compares the top candidates side by side to pick the shortlist, and fact-checks each deep dive.
+  judge: claude-sonnet-5
+  judge_effort: medium
+  # Deep dives and the editor's overview. Swap to claude-sonnet-5 to cut cost roughly in half.
+  writer: claude-opus-5
+  writer_effort: high
+
+output:
+  reports_dir: reports
+  db_path: data/radar.db
+  timezone: America/Phoenix

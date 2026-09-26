@@ -1,0 +1,63 @@
+name: Weekly AI Research Radar
+
+on:
+  schedule:
+    - cron: "0 15 * * 0"   # Sundays 08:00 America/Phoenix (UTC-7, no DST)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Skip model calls (keyword ranking only)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: radar
+  cancel-in-progress: false
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --frozen
+
+      - name: Generate report
+        id: run
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          uv run radar ${{ inputs.dry_run && '--dry-run' || '' }} | tee result.json
+          echo "markdown=$(jq -r .markdown result.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Commit report and history
+        run: |
+          git config user.name "ai-research-radar"
+          git config user.email "actions@users.noreply.github.com"
+          git add reports data/radar.db
+          git commit -m "Weekly report $(date -u +%F)" || echo "nothing to commit"
+          git push
+
+      - name: Open issue with the report
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPORT: ${{ steps.run.outputs.markdown }}
+        run: |
+          title="AI Research Radar — $(basename "$REPORT" .md)"
+          url="${{ github.server_url }}/${{ github.repository }}/blob/${{ github.ref_name }}/$REPORT"
+          # GitHub caps issue bodies at 65,536 characters; link to the file if the report is longer.
+          if [ "$(wc -c < "$REPORT")" -lt 60000 ]; then
+            gh issue create --title "$title" --body-file "$REPORT"
+          else
+            gh issue create --title "$title" --body "The report is too long for an issue body. Read it here: $url"
+          fi
